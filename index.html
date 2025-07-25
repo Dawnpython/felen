@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выберите карты</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: url('card/phone.jpeg');
+            background-size: cover;
+            background-position: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+
+        .container {
+            text-align: center;
+            background: none;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: none;
+            position: relative;
+        }
+
+        .cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px;
+            perspective: 1200;
+            position: relative;
+            min-height: 150px;
+        }
+
+        .selected-cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+            min-height: 170px;
+        }
+
+        .card {
+            width: 70px;
+            height: 130px;
+            margin: 10px;
+            background-image: url('card/back.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: all 0.6s ease;
+            transform-style: preserve-3d;
+            position: absolute;
+            border-radius: 8px;
+            
+            backface-visibility: hidden;
+        }
+
+        .deck {
+            width: 70px;
+            height: 130px;
+            margin: 10px;
+            background-image: url('card/back.jpg');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border-radius: 8px;
+            
+            position: relative;
+            z-index: 10;
+            
+        }
+
+        .deck:hover {
+            transform: translateY(-5px);
+        }
+        
+
+        
+
+        .grouped {
+            position: relative;
+            left: 0;
+            top: 0;
+            margin: 10px;
+            transition: transform 0.6s ease, opacity 0.6s ease;
+        }
+
+        #continueButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #d4af37;
+            color: black;
+            border: none;
+            border-radius: 5px;
+            transition: opacity 0.6s ease, background-color 0.3s ease;
+            opacity: 0;
+            margin-top: 20px;
+        }
+
+        #continueButton.visible {
+            opacity: 1;
+        }
+
+        #continueButton:hover {
+            background-color: #b5933a;
+        }
+
+        .title-wrapper {
+            display: inline-block;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #d4af37;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #chooseCardsTitle {
+            font-size: 24px;
+            color: #fff;
+            margin: 0;
+        }
+
+        .counter {
+            font-size: 20px;
+            color: #fff;
+            margin-top: 8px;
+        }
+
+        @keyframes drawCard {
+            0% {
+                transform: translateY(0) rotateX(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(150px) rotateX(180deg);
+                opacity: 1;
+            }
+        }
+
+        .card.draw-animation {
+            animation: drawCard 1s ease-in-out forwards;
+            z-index: 20;
+            transform-origin: center top; /* важный момент: поворот будет вокруг верхней грани */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title-wrapper">
+            <h1 id="chooseCardsTitle">Выберите карты</h1>
+            <div class="counter" id="counter">(нажми)<br>0/10</div>
+
+        </div>
+
+        <div class="cards-container">
+            <div class="deck" id="deck"></div>
+        </div>
+        <div class="selected-cards-container" id="selectedCardsContainer"></div>
+        <button id="continueButton" class="hidden">Продолжить</button>
+    </div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Telegram.WebApp.expand();
+
+            const cardImages = Array.from({ length: 77 }, (_, i) => `card/card${i + 1}.jpg`);
+            const selectedCards = [];
+            const deck = document.getElementById('deck');
+            const selectedCardsContainer = document.getElementById('selectedCardsContainer');
+            const continueButton = document.getElementById('continueButton');
+            const chooseCardsTitle = document.getElementById('chooseCardsTitle');
+            const counter = document.getElementById('counter');
+            const cardsContainer = document.querySelector('.cards-container');
+
+            const shuffledDeck = [...cardImages].sort(() => Math.random() - 0.5);
+            let currentDeck = [...shuffledDeck];
+
+            function preloadImages(srcArray) {
+                srcArray.forEach(src => {
+                    const img = new Image();
+                    img.src = src;
+                });
+            }
+
+            preloadImages(cardImages);
+
+            deck.addEventListener('click', () => {
+                if (selectedCards.length >= 10) return;
+
+                if (currentDeck.length === 0) {
+                    currentDeck = [...shuffledDeck].sort(() => Math.random() - 0.5);
+                }
+
+                const cardSrc = currentDeck.pop();
+                selectedCards.push(cardSrc);
+
+                const card = document.createElement('div');
+                card.className = 'card draw-animation';
+                card.dataset.src = cardSrc;
+
+                // Начальная позиция совпадает с позицией колоды
+                const deckRect = deck.getBoundingClientRect();
+                const containerRect = cardsContainer.getBoundingClientRect();
+
+                const offsetLeft = deckRect.left - containerRect.left;
+                const offsetTop = deckRect.top - containerRect.top;
+
+                card.style.left = `${offsetLeft}px`;
+                card.style.top = `${offsetTop}px`;
+
+                cardsContainer.appendChild(card);
+
+                setTimeout(() => {
+                    card.style.backgroundImage = `url(${cardSrc})`;
+                }, 400);
+
+                setTimeout(() => {
+                    card.style.position = 'relative';
+                    card.style.left = 'auto';
+                    card.style.top = 'auto';
+                    card.classList.remove('draw-animation');
+                    selectedCardsContainer.appendChild(card);
+
+                    counter.textContent = `${selectedCards.length}/10`;
+
+                    if (selectedCards.length === 10) {
+                        chooseCardsTitle.style.opacity = '0';
+                        setTimeout(() => {
+                            chooseCardsTitle.classList.add('hidden');
+                            continueButton.classList.remove('hidden');
+                            setTimeout(() => {
+                                continueButton.classList.add('visible');
+                            }, 50);
+                        }, 600);
+                    }
+                }, 800);
+            });
+
+            continueButton.addEventListener('click', () => {
+                Telegram.WebApp.sendData(JSON.stringify(selectedCards));
+                Telegram.WebApp.close();
+            });
+        });
+    </script>
+</body>
+</html>
